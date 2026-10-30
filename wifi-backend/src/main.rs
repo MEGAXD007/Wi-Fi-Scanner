@@ -1,43 +1,25 @@
 use std::io::{Read};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
+use rusqlite::{Connection, Result};
 
-fn handle_client(mut stream: TcpStream) {
-    let peer = stream.peer_addr().unwrap();
-    println!("Connected to: {}", peer);
+fn main() -> std::io::Result<()> {
+    thread::spawn(|| open_db());
 
-    let mut buffer = [0u8; 1024];
+    let listener = TcpListener::bind("127.0.0.1:7878")?;
+    println!("Waiting for connection");
+
     loop {
-        match stream.read(&mut buffer) {
-            Ok(0) => {
-                println!("Disconnected: {}", peer);
-                break;
-            }
-            Ok(n) => {
-                let msg = String::from_utf8_lossy(&buffer[..n]);
-                println!("Recieved from {}: {}", peer, msg);
-                let daten: Vec<&str> = msg.split(';').collect();
-                println!("{:?}", daten);
-            }
-            Err(e) => {
-                eprintln!("Error: {}", e);
-                break;
-            }
-        }
+        let (mut stream, addr) = listener.accept()?;
+        println!("Connected to: {}", addr);
+
+        let mut buffer = String::new();
+        stream.read_to_string(&mut buffer)?;
+        let daten: Vec<&str> = buffer.split(';').collect();
+        println!("{:?}", daten);
     }
 }
 
-fn main() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:7878")?;
-    println!("Server available on: 127.0.0.1:7878");
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                thread::spawn(|| handle_client(stream));
-            }
-            Err(e) => eprintln!("Connection error: {}", e),
-        }
-    }
-    Ok(())
+fn open_db() {
+    let conn = Connection::open("network.db");
 }
