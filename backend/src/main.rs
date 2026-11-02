@@ -3,10 +3,12 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use rusqlite::{Connection, Result, params};
 ///////////////////////////////////////////
-// mdata includesn the measured data.
+// mdata includes the measured data.
 // mdata[0]: room id
 // mdata[1]: timestamp
+// mdata[2]: frequency
 // mdata[3]: speed
+// mdata[4]: latency
 //
 // Object to change
 ///////////////////////////////////////////
@@ -45,9 +47,11 @@ fn open_db() -> Result<Connection> {
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS data (
-            id             INTEGER PRIMARY KEY,
-            measurement_id INTEGER NOT NULL,
-            speed          REAL NOT NULL,
+            id              INTEGER PRIMARY KEY,
+            measurement_id  INTEGER NOT NULL,
+            frequency       TEXT NOT NULL,
+            speed           REAL NOT NULL,
+            latency         INTEGER NOT NULL,
             FOREIGN KEY (measurement_id) REFERENCES measurement(id)
         ) STRICT",
         (),
@@ -68,8 +72,8 @@ fn write_db(mdata: Vec<&str>) -> Result<Connection> {
 
 
     conn.execute(
-            "INSERT INTO data (measurement_id, speed) VALUES (?1, ?2)",
-            params![id, mdata[2]]
+            "INSERT INTO data (measurement_id, frequency, speed, latency) VALUES (?1, ?2, ?3, ?4)", //Assign same id for same scan with different frequencys needed
+            params![id, mdata[2], mdata[3], mdata[4]]
     )?;
 
     Ok(conn)
