@@ -2,16 +2,15 @@ use std::io::{Read};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use rusqlite::{Connection, Result, params};
-///////////////////////////////////////////
-// mdata includes the measured data.
-// mdata[0]: room id
-// mdata[1]: timestamp
-// mdata[2]: frequency
-// mdata[3]: speed
-// mdata[4]: latency
-//
-// Object to change
-///////////////////////////////////////////
+
+struct Data {
+    room: String,
+    multi_frequency: bool,
+    timestemp: i32,
+    frequency: String,
+    quality: String,
+    speed: i32
+}
 
 fn main() -> std::io::Result<()> {
     open_db();
@@ -26,8 +25,19 @@ fn main() -> std::io::Result<()> {
         let mut buffer = String::new();
         stream.read_to_string(&mut buffer)?;
         let mdata: Vec<&str> = buffer.split(';').collect();
-        println!("{:?}", mdata);
-        write_db(mdata);
+        let data = decrypt(mdata);
+        write_db(&data);
+    }
+}
+
+fn decrypt(mdata: Vec<&str>) -> Data {
+    Data {
+        room: mdata[0].to_string(),
+        multi_frequency: mdata[1] == "true",
+        timestemp: mdata[2].parse::<i32>().unwrap(),
+        frequency: mdata[3].to_string(),
+        quality: mdata[4].to_string(),
+        speed: mdata[5].parse::<i32>().unwrap()
     }
 }
 
@@ -37,44 +47,49 @@ fn open_db() -> Result<Connection> {
     conn.execute_batch("PRAGMA foreign_keys = ON;")?;
 
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS measurement (
-            id   INTEGER PRIMARY KEY,
-            room TEXT NOT NULL,
-            ts   INTEGER NOT NULL
-        ) STRICT",
-        (),
-    )?;
+    "CREATE TABLE IF NOT EXISTS measurement (
+                id   INTEGER PRIMARY KEY,
+                room TEXT NOT NULL,
+                ts   INTEGER NOT NULL
+            ) STRICT",
+            (),
+        )?;
 
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS data (
-            id              INTEGER PRIMARY KEY,
-            measurement_id  INTEGER NOT NULL,
-            frequency       TEXT NOT NULL,
-            speed           REAL NOT NULL,
-            latency         INTEGER NOT NULL,
-            FOREIGN KEY (measurement_id) REFERENCES measurement(id)
-        ) STRICT",
-        (),
-    )?;
+    "CREATE TABLE IF NOT EXISTS data (
+                id              INTEGER PRIMARY KEY,
+                measurement_id  INTEGER NOT NULL,
+                frequency       TEXT NOT NULL,
+                quality         TEXT NOT NULL,
+                speed           REAL NOT NULL,
+                FOREIGN KEY (measurement_id) REFERENCES measurement(id)
+            ) STRICT",
+            (),
+        )?;
 
     Ok(conn)
 }
 
-fn write_db(mdata: Vec<&str>) -> Result<Connection> {
+fn write_db(data: &Data) -> Result<Connection> {
     let conn = Connection::open("network.db3")?;
 
-    conn.execute(
-            "INSERT INTO measurement (room, ts) VALUES (?1, ?2)",
-            params![mdata[0], mdata[1]]
+    if !data.multi_frequency {
+        conn.execute(
+        "INSERT INTO measurement (room, ts) VALUES (?1, ?2)",
+            params![data.room, data.timestemp]
+            )?;
+        }
+
+    let id: i64 = conn.query_row(
+        "SELECT id FROM measurement ORDER BY id DESC LIMIT 1",
+        (),
+        |row| row.get(0),
     )?;
 
-    let id = conn.last_insert_rowid();
-
-
     conn.execute(
-            "INSERT INTO data (measurement_id, frequency, speed, latency) VALUES (?1, ?2, ?3, ?4)", //Assign same id for same scan with different frequencys needed
-            params![id, mdata[2], mdata[3], mdata[4]]
-    )?;
+    "INSERT INTO data (measurement_id, frequency, quality, speed) VALUES (?1, ?2, ?3, ?4)", //Assign same id for same scan with different frequencys needed
+        params![id, data.frequency, data.quality, data.speed]
+        )?;
 
     Ok(conn)
 }
