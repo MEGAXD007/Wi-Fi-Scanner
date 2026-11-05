@@ -2,6 +2,7 @@ use std::io::{Read};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use rusqlite::{Connection, Result, params};
+use std::io::{BufRead, BufReader};
 
 struct Data {
     room: String,
@@ -12,21 +13,21 @@ struct Data {
     speed: i32
 }
 
-fn main() -> std::io::Result<()> {
+fn main() {
     open_db();
 
-    let listener = TcpListener::bind("127.0.0.1:7878")?;
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     println!("Waiting for connection");
 
-    loop {
-        let (mut stream, addr) = listener.accept()?;
-        println!("Connected to: {}", addr);
+    for stream in listener.incoming() {
+        let stream = stream.unwrap();
 
-        let mut buffer = String::new();
-        stream.read_to_string(&mut buffer)?;
-        let mdata: Vec<&str> = buffer.split(';').collect();
-        let data = decrypt(mdata);
-        write_db(&data);
+        for line in BufReader::new(stream).lines() {
+            let line = line.unwrap();
+            let data = decrypt(line.split(';').collect());
+            write_db(&data);
+            println!("Wrote to DB")
+        }
     }
 }
 

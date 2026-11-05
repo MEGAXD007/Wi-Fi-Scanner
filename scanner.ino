@@ -1,7 +1,6 @@
 
 #include <SPI.h>
-#include <WiFiS3.h>
-#include <ArduinoMqttClient.h>
+#include <WiFi.h>
 
 #include "arduino_secrets.h"
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
@@ -10,15 +9,7 @@ char user[] = SECRET_USER;  // your WPA2 enterprise username
 char pass[] = SECRET_PASS;  // your WPA2 enterprise password
 int status = WL_IDLE_STATUS;     // the Wifi radio's status
 
-WiFiClient wifiClient;
-MqttClient mqttClient(wifiClient);
-/*
- *  This sketch demonstrates how to scan WiFi networks. For chips that support 5GHz band, separate scans are done for all bands.
- *  The API is based on the Arduino WiFi Shield library, but has significant changes as newer WiFi functions are supported.
- *  E.g. the return value of `encryptionType()` different because more modern encryption is supported.
- */
 #include <Arduino.h>
-#include "WiFi.h"
 
 void setup() {
   Serial.begin(115200);
@@ -125,33 +116,7 @@ void setup() {
   printCurrentNet();
   printWifiData();
 
-  // MQTT-Broker
-  Serial.print("Attempting to connect to the MQTT broker: ");
-  Serial.println(broker);
-  if (!mqttClient.connect(broker, port)) {
-    Serial.print("MQTT connection failed! Error code = ");
-    Serial.println(mqttClient.connectError());
-    while (1);
-  }
-  Serial.println("You're connected to the MQTT broker!");
-  Serial.println();
-
 }
-
-void loop() {
-  mqttClient.poll();
-  delay(1000);
-
-  // Zusammensetzen und Versenden eine MQTT-Pakets
-  mqttClient.beginMessage("KIR/exampledata");
-  mqttClient.print("Ich sende wichtige Daten!");
-  mqttClient.endMessage();
-  // Hinweise über serielle Schnittstelle versenden
-  Serial.println("Daten unter dem topic 'KIR/exampledata' gesendet");
-
-  delay(1000);
-}
-
 
 
 // Funktionsaufrufe zur Ausgabe der
