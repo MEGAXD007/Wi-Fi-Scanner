@@ -1,3 +1,17 @@
+
+#include <SPI.h>
+#include <WiFiS3.h>
+#include <ArduinoMqttClient.h>
+
+#include "arduino_secrets.h"
+///////please enter your sensitive data in the Secret tab/arduino_secrets.h
+char ssid[] = SECRET_SSID;  // your WPA2 enterprise network SSID (name)
+char user[] = SECRET_USER;  // your WPA2 enterprise username
+char pass[] = SECRET_PASS;  // your WPA2 enterprise password
+int status = WL_IDLE_STATUS;     // the Wifi radio's status
+
+WiFiClient wifiClient;
+MqttClient mqttClient(wifiClient);
 /*
  *  This sketch demonstrates how to scan WiFi networks. For chips that support 5GHz band, separate scans are done for all bands.
  *  The API is based on the Arduino WiFi Shield library, but has significant changes as newer WiFi functions are supported.
@@ -81,4 +95,97 @@ void loop() {
 #endif
   // Wait a bit before scanning again.
   delay(10000);
+}
+
+const char broker[] = "hive.mq";
+int        port     = 1883;
+const char topic[]  = "";
+
+void setup() {
+  //Initialize serial and wait for port to open:
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+
+  String fv = WiFi.firmwareVersion();
+  if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
+    Serial.println("Please upgrade the firmware");
+  }
+
+  // Wifi network:
+  while (status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to WPA SSID: ");
+    Serial.println(ssid);
+    status = WiFi.beginEnterprise(ssid, user, pass);
+    // wait 10 seconds for connection:
+    delay(5000);
+  }
+  Serial.print("You're connected to the network");
+  printCurrentNet();
+  printWifiData();
+
+  // MQTT-Broker
+  Serial.print("Attempting to connect to the MQTT broker: ");
+  Serial.println(broker);
+  if (!mqttClient.connect(broker, port)) {
+    Serial.print("MQTT connection failed! Error code = ");
+    Serial.println(mqttClient.connectError());
+    while (1);
+  }
+  Serial.println("You're connected to the MQTT broker!");
+  Serial.println();
+
+}
+
+void loop() {
+  mqttClient.poll();
+  delay(1000);
+
+  // Zusammensetzen und Versenden eine MQTT-Pakets
+  mqttClient.beginMessage("KIR/exampledata");
+  mqttClient.print("Ich sende wichtige Daten!");
+  mqttClient.endMessage();
+  // Hinweise über serielle Schnittstelle versenden
+  Serial.println("Daten unter dem topic 'KIR/exampledata' gesendet");
+
+  delay(1000);
+}
+
+
+
+// Funktionsaufrufe zur Ausgabe der
+// Netzwerkeigenschaften des Boards
+// (kann man im loop() nutzen wenn
+// es einen interessiert ;-))
+void printWifiData() {
+  // print your board's IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print your MAC address:
+  byte mac[6];
+  WiFi.macAddress(mac);
+  Serial.print("MAC address: ");
+  printMacAddress(mac);
+}
+
+void printCurrentNet() {
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+}
+
+void printMacAddress(byte mac[]) {
+  for (int i = 5; i >= 0; i--) {
+    if (mac[i] < 16) {
+      Serial.print("0");
+    }
+    Serial.print(mac[i], HEX);
+    if (i > 0) {
+      Serial.print(":");
+    }
+  }
+  Serial.println();
 }
