@@ -6,10 +6,11 @@ use std::io::{BufRead, BufReader};
 
 struct Data {
     room: String,
-    multi_frequency: bool,
+    multifrequency: bool,
     timestemp: i32,
     frequency: String,
-    quality: String,
+    rssi: i32,
+    channel: i32,
     speed: i32
 }
 
@@ -34,10 +35,11 @@ fn main() {
 fn decrypt(mdata: Vec<&str>) -> Data {
     Data {
         room: mdata[0].to_string(),
-        multi_frequency: mdata[1] == "true",
-        timestemp: mdata[2].parse::<i32>().unwrap(),
-        frequency: mdata[3].to_string(),
-        quality: mdata[4].to_string(),
+        multifrequency: mdata[1] == "true",
+        timestemp: 1900, //set time by backend
+        frequency: mdata[2].to_string(),
+        rssi: mdata[3].parse::<i32>().unwrap(),
+        channel: mdata[4].parse::<i32>().unwrap(),
         speed: mdata[5].parse::<i32>().unwrap()
     }
 }
@@ -48,10 +50,21 @@ fn open_db() -> Result<Connection> {
     conn.execute_batch("PRAGMA foreign_keys = ON;")?;
 
     conn.execute(
+    "CREATE TABLE IF NOT EXISTS location (
+                id              INTEGER PRIMARY KEY,
+                name            TEXT NOT NULL,
+                ssid            TEXT NOT NULL
+            ) STRICT",
+            (),
+        )?;
+
+    conn.execute(
     "CREATE TABLE IF NOT EXISTS measurement (
-                id   INTEGER PRIMARY KEY,
-                room TEXT NOT NULL,
-                ts   INTEGER NOT NULL
+                id              INTEGER PRIMARY KEY,
+                location_id     INTEGER NOT NULL,
+                room            TEXT NOT NULL,
+                ts              INTEGER NOT NULL,
+                FOREIGN KEY (location_id) REFERENCES location(id)
             ) STRICT",
             (),
         )?;
@@ -61,7 +74,8 @@ fn open_db() -> Result<Connection> {
                 id              INTEGER PRIMARY KEY,
                 measurement_id  INTEGER NOT NULL,
                 frequency       TEXT NOT NULL,
-                quality         TEXT NOT NULL,
+                rssi            INTEGER NOT NULL,
+                channel         INTEGER NOT NULL,
                 speed           REAL NOT NULL,
                 FOREIGN KEY (measurement_id) REFERENCES measurement(id)
             ) STRICT",
@@ -74,10 +88,10 @@ fn open_db() -> Result<Connection> {
 fn write_db(data: &Data) -> Result<Connection> {
     let conn = Connection::open("network.db3")?;
 
-    if !data.multi_frequency {
+    if !data.multifrequency {
         conn.execute(
-        "INSERT INTO measurement (room, ts) VALUES (?1, ?2)",
-            params![data.room, data.timestemp]
+        "INSERT INTO measurement (location_id, room, ts) VALUES (?1, ?2, ?3)",
+            params![1,data.room, data.timestemp]
             )?;
         }
 
@@ -88,8 +102,8 @@ fn write_db(data: &Data) -> Result<Connection> {
     )?;
 
     conn.execute(
-    "INSERT INTO data (measurement_id, frequency, quality, speed) VALUES (?1, ?2, ?3, ?4)", //Assign same id for same scan with different frequencys needed
-        params![id, data.frequency, data.quality, data.speed]
+    "INSERT INTO data (measurement_id, frequency, rssi, channel, speed) VALUES (?1, ?2, ?3, ?4, ?5)", //Assign same id for same scan with different frequencys needed
+        params![id, data.frequency, data.rssi, data.channel, data.speed]
         )?;
 
     Ok(conn)

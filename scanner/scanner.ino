@@ -9,14 +9,36 @@ char ip[] = SECRET_IP;
 uint16_t port = 7878;
 WiFiClient client;
 
-struct {
-  string room;
+struct Data {
+  String room;
   bool multi_frequency;
-  int timestemp; //might move to backend
-  string frequency;
-  string quality;
+  String frequency;
+  int rssi;
+  int channel;
   int speed;
-} Data;
+};
+
+Data messen() {
+  Data d;
+  d.room = "S052";
+  d.multifrequency = false;
+  d.frequency = "2.4"; //Hardcoded till multifrequency is implemented
+  d.rssi = WiFi.RSSI();
+  d.channel = WiFi.channel();
+  d.speed = 300;
+  return d;
+}
+
+String toLine(const Data &d, char sep = ';') {
+  String s;
+  s += d.room;                                  s += sep;
+  s += (d.multi_frequency ? "true" : "false");  s += sep;
+  s += d.frequency;                             s += sep;
+  s += d.rssi;                                  s += sep;
+  s += d.channel;                               s += sep;
+  s += d.speed;
+  return s;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -30,7 +52,7 @@ void setup() {
   esp_eap_client_set_ttls_phase2_method(ESP_EAP_TTLS_PHASE2_PAP);
   esp_wifi_sta_enterprise_enable();
 
-  Serial.print("Verbinde mit ");
+  Serial.print("Connecting to: ");
   Serial.println(ssid);
   WiFi.begin(ssid);
 
@@ -40,7 +62,7 @@ void setup() {
   }
 
   Serial.println();
-  Serial.println("Verbunden");
+  Serial.println("Connected");
   printCurrentNet();
   printWifiData();
 }
@@ -63,23 +85,18 @@ void printCurrentNet() {
   Serial.println(WiFi.SSID());
 }
 
-void scan() {
-
-}
-
 void tcp_send() {
-  // Verbindung aufbauen, falls noch keine besteht
   if (!client.connected()) {
-    Serial.println("Verbinde mit Server...");
+    Serial.println("Connecting to Server...");
     if (!client.connect(ip, port)) {
-      Serial.println("Verbindung fehlgeschlagen");
+      Serial.println("Connection failed");
       delay(5000);
       return;
     }
-    Serial.println("Mit Server verbunden");
+    Serial.println("Connected to Server");
   }
 
-  client.println("S066;false;2000;2,4 GHz;good;300");
-  Serial.print("Send");
-  
+  Data d = messen();
+  client.println(toLine(d));
+  Serial.println("Send");
 }
