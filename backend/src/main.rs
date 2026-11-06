@@ -16,7 +16,7 @@ struct Data {
 fn main() {
     open_db();
 
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let listener = TcpListener::bind("0.0.0.0:7878").unwrap();
     println!("Waiting for connection");
 
     for stream in listener.incoming() {
