@@ -7,16 +7,21 @@ pub fn run() -> eframe::Result {
     let mut selected:usize = 0;
 
     eframe::run_ui_native("Wi-Fi Scanner", options, move |ui, _frame| {
+
         egui_extras::install_image_loaders(ui.ctx());
+        
         egui::Panel::left("controls").show(ui, |ui| {
             ui.heading("Control Panel");
 
-            egui::ComboBox::from_label("Floor")
-            .selected_text(floor[selected])
-            .show_ui(ui,|ui| {
-                for (i, name) in floor.iter().enumerate() {
-                    ui.selectable_value(&mut selected,i,*name);
-                } 
+            ui.horizontal(|ui| {
+                ui.label("Floor:");
+                egui::ComboBox::from_id_salt("floor")
+                .selected_text(floor[selected])
+                .show_ui(ui,|ui| {
+                    for (i, name) in floor.iter().enumerate() {
+                        ui.selectable_value(&mut selected, i, *name);
+                    } 
+                });
             });
         });
 
