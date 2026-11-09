@@ -11,7 +11,7 @@ WiFiClient client;
 
 struct Data {
   String room;
-  bool multi_frequency;
+  bool multifrequency;
   String frequency;
   int rssi;
   int channel;
@@ -32,7 +32,7 @@ Data messen() {
 String toLine(const Data &d, char sep = ';') {
   String s;
   s += d.room;                                  s += sep;
-  s += (d.multi_frequency ? "true" : "false");  s += sep;
+  s += (d.multifrequency ? "true" : "false");  s += sep;
   s += d.frequency;                             s += sep;
   s += d.rssi;                                  s += sep;
   s += d.channel;                               s += sep;
