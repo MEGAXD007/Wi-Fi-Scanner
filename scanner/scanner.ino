@@ -8,6 +8,7 @@ char pass[] = SECRET_PASS;
 char ip[] = SECRET_IP;
 uint16_t port = 7878;
 WiFiClient client;
+unsigned long lastBeat;
 
 struct Data {
   String room;
@@ -68,8 +69,25 @@ void setup() {
 }
 
 void loop() {
-  tcp_send();
-  delay(5000);
+  if (!client.connected()) {
+    Serial.println("Connecting to Server...");
+    if (!client.connect(ip, port)) {
+      Serial.println("Connection failed");
+      delay(5000);
+      return;
+    }
+    Serial.println("Connected to Server");
+  }
+
+  // client.println(toLine(messen()));
+  // lastBeat = millis();
+  // Serial.println("Send");
+
+  if (millis() - lastBeat >= 5000) {
+    client.println("ping");
+    lastBeat = millis();
+    Serial.println("Send Ping");
+  }
 }
 
 void printWifiData() {
@@ -83,20 +101,4 @@ void printWifiData() {
 void printCurrentNet() {
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
-}
-
-void tcp_send() {
-  if (!client.connected()) {
-    Serial.println("Connecting to Server...");
-    if (!client.connect(ip, port)) {
-      Serial.println("Connection failed");
-      delay(5000);
-      return;
-    }
-    Serial.println("Connected to Server");
-  }
-
-  Data d = messen();
-  client.println(toLine(d));
-  Serial.println("Send");
 }

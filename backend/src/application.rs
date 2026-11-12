@@ -1,13 +1,14 @@
 use eframe::egui;
+use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
+use std::time::Duration;
 
-pub fn run() -> eframe::Result {
+pub fn run(connected: Arc<AtomicBool>) -> eframe::Result {
     let options = eframe::NativeOptions::default();
 
     let floor = ["0", "1"];
     let mut selected:usize = 0;
 
     eframe::run_ui_native("Wi-Fi Scanner", options, move |ui, _frame| {
-
         egui_extras::install_image_loaders(ui.ctx());
         
         egui::Panel::left("controls").show(ui, |ui| {
@@ -22,6 +23,15 @@ pub fn run() -> eframe::Result {
                         ui.selectable_value(&mut selected, i, *name);
                     } 
                 });
+            });
+
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                if connected.load(Ordering::Relaxed) {
+                    ui.label("Status: Connected");
+                } else {
+                    ui.label("Status: Not Connected");
+                }
+                ui.ctx().request_repaint_after(Duration::from_millis(500));
             });
         });
 
