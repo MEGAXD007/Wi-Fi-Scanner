@@ -1,2 +1,2 @@
 # Wi-Fi-Scanner
-Development of an Wi-Fi Scanner, to analyze connection quality at different positions in your network.
+This project allows you to scan your WPA2-Enterprise Wi-Fi with an ESP32. The data gets send to your PC which stores it and can visualize it on a plan of your building.
