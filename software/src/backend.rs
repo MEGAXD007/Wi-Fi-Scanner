@@ -1,25 +1,28 @@
-use std::net::{TcpListener};
+use std::net::{TcpListener, TcpStream};
 use rusqlite::{Connection, Result, params};
 use std::io::{BufRead, BufReader};
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
 use std::thread;
-use std::time::{Duration};
+use std::time::Duration;
+use chrono::Local;
 
 struct Data {
+    ssid: String,
     room: String,
     multifrequency: bool,
-    timestemp: i32,
     frequency: String,
     rssi: i32,
     channel: i32,
-    speed: i32
+    speed: i32,
+    date: String,
+    time: String
 }
 
 pub fn run(connected: Arc<AtomicBool>) {
     open_db();
 
-    let listener = TcpListener::bind("0.0.0.0:7878").unwrap();
-    println!("Waiting for connection");
+    let listener = TcpListener::bind("0.0.0.0:7878").unwrap();      
+    println!("Waiting for connection"); 
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -46,14 +49,18 @@ pub fn run(connected: Arc<AtomicBool>) {
 }
 
 fn decrypt(mdata: Vec<&str>) -> Data {
+    let time = Local::now();
+
     Data {
-        room: mdata[0].to_string(),
-        multifrequency: mdata[1] == "true",
-        timestemp: 1900, //set time by backend
-        frequency: mdata[2].to_string(),
-        rssi: mdata[3].parse::<i32>().unwrap(),
-        channel: mdata[4].parse::<i32>().unwrap(),
-        speed: mdata[5].parse::<i32>().unwrap()
+        ssid: mdata[0].to_string(),
+        room: mdata[1].to_string(),
+        multifrequency: mdata[2] == "true",
+        frequency: mdata[3].to_string(),
+        rssi: mdata[4].parse::<i32>().unwrap(),
+        channel: mdata[5].parse::<i32>().unwrap(),
+        speed: mdata[6].parse::<i32>().unwrap(),
+        date: time.format("%d.%m.%y").to_string(),
+        time: time.format("%H:%M").to_string()
     }
 }
 
@@ -77,7 +84,8 @@ fn open_db() -> Result<Connection> {
                 id              INTEGER PRIMARY KEY,
                 location_id     INTEGER NOT NULL,
                 room            TEXT NOT NULL,
-                ts              INTEGER NOT NULL,
+                date            TEXT NOT NULL,
+                time            TEXT NOT NULL,
                 FOREIGN KEY (location_id) REFERENCES location(id)
             ) STRICT",
             (),
@@ -104,8 +112,8 @@ fn write_db(data: &Data) -> Result<Connection> {
 
     if !data.multifrequency {
         conn.execute(
-        "INSERT INTO measurement (location_id, room, ts) VALUES (?1, ?2, ?3)",
-            params![1,data.room, data.timestemp]
+        "INSERT INTO measurement (location_id, room, date, time) VALUES (?1, ?2, ?3, ?4)",
+            params![1,data.room, data.date, data.time] // location_id currently hardcoded
             )?;
         }
 

@@ -1,9 +1,11 @@
+// Outdated!
+// See enterprise version for current functionality
+
 #include <WiFi.h>
-#include "esp_eap_client.h"
+#include <LiquidCrystal.h>
 #include "arduino_secrets.h"   // SECRET_SSID, SECRET_USER, SECRET_PASS
 
 char ssid[] = SECRET_SSID;
-char user[] = SECRET_USER;
 char pass[] = SECRET_PASS;
 char ip[] = SECRET_IP;
 uint16_t port = 7878;
@@ -11,6 +13,7 @@ WiFiClient client;
 unsigned long lastBeat;
 
 struct Data {
+  String ssid;
   String room;
   bool multifrequency;
   String frequency;
@@ -21,6 +24,7 @@ struct Data {
 
 Data messen() {
   Data d;
+  d.ssid = SECRET_SSID;
   d.room = "S052";
   d.multifrequency = false;
   d.frequency = "2.4"; //Hardcoded till multifrequency is implemented
@@ -32,6 +36,7 @@ Data messen() {
 
 String toLine(const Data &d, char sep = ';') {
   String s;
+  s += d.ssid;                                  s += sep;
   s += d.room;                                  s += sep;
   s += (d.multifrequency ? "true" : "false");  s += sep;
   s += d.frequency;                             s += sep;
@@ -45,17 +50,11 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  WiFi.mode(WIFI_STA);
-
-  esp_eap_client_set_identity((uint8_t *)user, strlen(user));
-  esp_eap_client_set_username((uint8_t *)user, strlen(user));
-  esp_eap_client_set_password((uint8_t *)pass, strlen(pass));
-  esp_eap_client_set_ttls_phase2_method(ESP_EAP_TTLS_PHASE2_PAP);
-  esp_wifi_sta_enterprise_enable();
-
   Serial.print("Connecting to: ");
   Serial.println(ssid);
-  WiFi.begin(ssid);
+  WiFi.begin(ssid, pass);
+  Serial.println(SECRET_SSID);
+  Serial.println(SECRET_IP);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -79,15 +78,16 @@ void loop() {
     Serial.println("Connected to Server");
   }
 
-  // client.println(toLine(messen()));
-  // lastBeat = millis();
-  // Serial.println("Send");
-
   if (millis() - lastBeat >= 5000) {
-    client.println("ping");
-    lastBeat = millis();
-    Serial.println("Send Ping");
+  client.println("ping");
+  lastBeat = millis();
+  Serial.println("Send Ping");
   }
+
+  delay(5000);
+  client.println(toLine(messen()));
+  lastBeat = millis();
+  Serial.println("Send");
 }
 
 void printWifiData() {
