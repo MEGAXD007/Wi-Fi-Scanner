@@ -1,4 +1,9 @@
+# Rust files
 target
+
+# Software files
 network.db3
-arduino_secrets.h
 plan
+
+# Scanner files
+arduino_secrets.h

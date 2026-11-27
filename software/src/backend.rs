@@ -1,6 +1,6 @@
-use std::net::{TcpListener, TcpStream};
+use std::net::{TcpListener};
 use rusqlite::{Connection, Result, params};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
 use std::thread;
 use std::time::Duration;
@@ -18,7 +18,7 @@ struct Data {
     time: String
 }
 
-pub fn run(connected: Arc<AtomicBool>) {
+pub fn run(connected: Arc<AtomicBool>, rooms: Arc<Vec<String>>) {
     open_db();
 
     let listener = TcpListener::bind("0.0.0.0:7878").unwrap();      
@@ -27,14 +27,17 @@ pub fn run(connected: Arc<AtomicBool>) {
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         let connected = Arc::clone(&connected);
+        let rooms = Arc::clone(&rooms);
 
         thread::spawn(move || {
             stream.set_read_timeout(Some(Duration::from_secs(15))).unwrap();
+
+            writeln!(&stream, "{}", rooms.join(";")).unwrap();
+
             connected.store(true, Ordering::Relaxed);
 
             for line in BufReader::new(stream).lines() {
                 let Ok(line) = line else {break};
-                
                 if line == "ping" {
                     continue
                 }          

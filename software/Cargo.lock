@@ -4535,7 +4535,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wifi-backend"
+name = "wifi-scanner"
 version = "0.1.0"
 dependencies = [
  "chrono",

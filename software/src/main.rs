@@ -8,9 +8,12 @@ mod application;
 
 fn main() {
     let connected = Arc::new(AtomicBool::new(false));
-    let connected_backend = Arc::clone(&connected);
+    let rooms = Arc::new(application::room_names());
 
-    thread::spawn(move || backend::run(connected_backend));
+    let connected_backend = Arc::clone(&connected);
+    let rooms_backend = Arc::clone(&rooms);
+
+    thread::spawn(move || backend::run(connected_backend, rooms_backend));
 
     application::run(connected).unwrap();
 }

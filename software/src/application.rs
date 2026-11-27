@@ -76,6 +76,24 @@ pub fn run(connected: Arc<AtomicBool>) -> eframe::Result {
     })
 }
 
+// Names of all rooms on all floors, sorted (sent to the ESP32 by the backend)
+pub fn room_names() -> Vec<String> {
+    let mut names = Vec::new();
+
+    for (_, path) in FLOORS {
+        if !std::path::Path::new(path).exists() {
+            continue;
+        }
+        let mut rooms = Vec::new();
+        collect_rooms(read_tree(path).root(), &mut rooms);
+        names.extend(rooms.into_iter().map(|room| room.name));
+    }
+
+    names.sort();
+    names.dedup();
+    names
+}
+
 impl App {
     fn new(connected: Arc<AtomicBool>) -> App {
         App {
@@ -377,15 +395,18 @@ fn query_details(location_id: i64, room: &str) -> rusqlite::Result<Option<RoomDe
 // SVG
 // ---------------------------------------------------------------
 
-fn load_svg(path: &str) -> (egui::ColorImage, Vec<Room>) {
+fn read_tree(path: &str) -> usvg::Tree {
     // The room shapes are invisible (no fill, transparent stroke) and usvg probably drops such
     // elements, so they get a barely visible fill
     let svg = std::fs::read_to_string(path).unwrap().replace(
         "fill:none;fill-opacity:1;stroke:#000000;stroke-opacity:0",
         "fill:#000000;fill-opacity:0.01;stroke:none",
     );
+    usvg::Tree::from_str(&svg, &usvg::Options::default()).unwrap()
+}
 
-    let tree = usvg::Tree::from_str(&svg, &usvg::Options::default()).unwrap();
+fn load_svg(path: &str) -> (egui::ColorImage, Vec<Room>) {
+    let tree = read_tree(path);
     let size = tree.size().to_int_size();
 
     let mut pixmap = tiny_skia::Pixmap::new(size.width(), size.height()).unwrap();
